@@ -42,8 +42,13 @@ class ImageSubscriber(Node):
     # Used to convert between ROS and OpenCV images
     self.br = CvBridge()
     self.model = YOLO("yolov8n.pt") 
+    # height: 480
+    # width: 640
 
-
+    frame_width = int(640)
+    frame_height = int(480)
+    self.out = cv2.VideoWriter('outpy.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (frame_width,frame_height))
+    self.frameid = 0
    
   def listener_callback(self, data):
     """
@@ -58,9 +63,11 @@ class ImageSubscriber(Node):
     # current_frame = current_frame[:,:,::-1]
     current_frame = np.array(current_frame)
     frame = np.stack((current_frame, current_frame, current_frame), axis=-1).reshape((current_frame.shape[0], current_frame.shape[1], 3))
-    
+    image_nm = 'output_imgs/' + str(self.frameid) + '.jpg'
+    cv2.imwrite(image_nm,frame)
+    self.frameid += 1
     # Predict with the model
-    results = self.model.track(frame, show=True)  # predict on an image 
+    # results = self.model.track(frame, show=True)  # predict on an image 
 
     # results = self.model.track(source=current_frame, show=True)
     # Display image
