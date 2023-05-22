@@ -1,0 +1,37 @@
+running egg_info
+creating ../../build/rclpy_message_converter/rclpy_message_converter.egg-info
+writing ../../build/rclpy_message_converter/rclpy_message_converter.egg-info/PKG-INFO
+writing dependency_links to ../../build/rclpy_message_converter/rclpy_message_converter.egg-info/dependency_links.txt
+writing entry points to ../../build/rclpy_message_converter/rclpy_message_converter.egg-info/entry_points.txt
+writing requirements to ../../build/rclpy_message_converter/rclpy_message_converter.egg-info/requires.txt
+writing top-level names to ../../build/rclpy_message_converter/rclpy_message_converter.egg-info/top_level.txt
+writing manifest file '../../build/rclpy_message_converter/rclpy_message_converter.egg-info/SOURCES.txt'
+reading manifest file '../../build/rclpy_message_converter/rclpy_message_converter.egg-info/SOURCES.txt'
+writing manifest file '../../build/rclpy_message_converter/rclpy_message_converter.egg-info/SOURCES.txt'
+running build
+running build_py
+creating /home/spot/project/yolov8_tracking/src/build/rclpy_message_converter/build
+creating /home/spot/project/yolov8_tracking/src/build/rclpy_message_converter/build/lib
+creating /home/spot/project/yolov8_tracking/src/build/rclpy_message_converter/build/lib/rclpy_message_converter
+copying rclpy_message_converter/__init__.py -> /home/spot/project/yolov8_tracking/src/build/rclpy_message_converter/build/lib/rclpy_message_converter
+copying rclpy_message_converter/json_message_converter.py -> /home/spot/project/yolov8_tracking/src/build/rclpy_message_converter/build/lib/rclpy_message_converter
+copying rclpy_message_converter/message_converter.py -> /home/spot/project/yolov8_tracking/src/build/rclpy_message_converter/build/lib/rclpy_message_converter
+running install
+running install_lib
+creating /home/spot/project/yolov8_tracking/src/install/rclpy_message_converter/lib/python3.10/site-packages/rclpy_message_converter
+copying /home/spot/project/yolov8_tracking/src/build/rclpy_message_converter/build/lib/rclpy_message_converter/__init__.py -> /home/spot/project/yolov8_tracking/src/install/rclpy_message_converter/lib/python3.10/site-packages/rclpy_message_converter
+copying /home/spot/project/yolov8_tracking/src/build/rclpy_message_converter/build/lib/rclpy_message_converter/json_message_converter.py -> /home/spot/project/yolov8_tracking/src/install/rclpy_message_converter/lib/python3.10/site-packages/rclpy_message_converter
+copying /home/spot/project/yolov8_tracking/src/build/rclpy_message_converter/build/lib/rclpy_message_converter/message_converter.py -> /home/spot/project/yolov8_tracking/src/install/rclpy_message_converter/lib/python3.10/site-packages/rclpy_message_converter
+byte-compiling /home/spot/project/yolov8_tracking/src/install/rclpy_message_converter/lib/python3.10/site-packages/rclpy_message_converter/__init__.py to __init__.cpython-310.pyc
+byte-compiling /home/spot/project/yolov8_tracking/src/install/rclpy_message_converter/lib/python3.10/site-packages/rclpy_message_converter/json_message_converter.py to json_message_converter.cpython-310.pyc
+byte-compiling /home/spot/project/yolov8_tracking/src/install/rclpy_message_converter/lib/python3.10/site-packages/rclpy_message_converter/message_converter.py to message_converter.cpython-310.pyc
+running install_data
+creating /home/spot/project/yolov8_tracking/src/install/rclpy_message_converter/share/ament_index
+creating /home/spot/project/yolov8_tracking/src/install/rclpy_message_converter/share/ament_index/resource_index
+creating /home/spot/project/yolov8_tracking/src/install/rclpy_message_converter/share/ament_index/resource_index/packages
+copying resource/rclpy_message_converter -> /home/spot/project/yolov8_tracking/src/install/rclpy_message_converter/share/ament_index/resource_index/packages
+copying package.xml -> /home/spot/project/yolov8_tracking/src/install/rclpy_message_converter/share/rclpy_message_converter
+running install_egg_info
+Copying ../../build/rclpy_message_converter/rclpy_message_converter.egg-info to /home/spot/project/yolov8_tracking/src/install/rclpy_message_converter/lib/python3.10/site-packages/rclpy_message_converter-2.0.1-py3.10.egg-info
+running install_scripts
+writing list of installed files to '/home/spot/project/yolov8_tracking/src/build/rclpy_message_converter/install.log'

@@ -1,0 +1,4 @@
+source;share/rclpy_message_converter_msgs/local_setup.bash
+source;share/rclpy_message_converter_msgs/local_setup.dsv
+source;share/rclpy_message_converter_msgs/local_setup.sh
+source;share/rclpy_message_converter_msgs/local_setup.zsh

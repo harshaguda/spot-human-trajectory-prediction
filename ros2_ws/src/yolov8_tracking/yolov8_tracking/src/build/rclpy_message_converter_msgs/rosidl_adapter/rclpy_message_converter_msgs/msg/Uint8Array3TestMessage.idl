@@ -1,0 +1,15 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from rclpy_message_converter_msgs/msg/Uint8Array3TestMessage.msg
+// generated code does not contain a copyright notice
+
+
+module rclpy_message_converter_msgs {
+  module msg {
+    typedef uint8 uint8__3[3];
+    @verbatim (language="comment", text=
+      "Fixed size uint8 array for testing purposes")
+    struct Uint8Array3TestMessage {
+      uint8__3 data;
+    };
+  };
+};

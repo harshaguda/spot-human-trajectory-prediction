@@ -1,0 +1,12 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from rclpy_message_converter_msgs/msg/TestArray.msg
+// generated code does not contain a copyright notice
+
+
+module rclpy_message_converter_msgs {
+  module msg {
+    struct TestArray {
+      sequence<double> data;
+    };
+  };
+};

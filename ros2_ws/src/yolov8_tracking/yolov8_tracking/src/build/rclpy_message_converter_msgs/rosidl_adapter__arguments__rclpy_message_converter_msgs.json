@@ -1,0 +1,10 @@
+{
+  "package_name": "rclpy_message_converter_msgs",
+  "non_idl_tuples": [
+    "/home/spot/project/yolov8_tracking/src/rospy_message_converter/rclpy_message_converter_msgs:msg/NestedUint8ArrayTestMessage.msg",
+    "/home/spot/project/yolov8_tracking/src/rospy_message_converter/rclpy_message_converter_msgs:msg/TestArray.msg",
+    "/home/spot/project/yolov8_tracking/src/rospy_message_converter/rclpy_message_converter_msgs:msg/Uint8Array3TestMessage.msg",
+    "/home/spot/project/yolov8_tracking/src/rospy_message_converter/rclpy_message_converter_msgs:msg/Uint8ArrayTestMessage.msg",
+    "/home/spot/project/yolov8_tracking/src/rospy_message_converter/rclpy_message_converter_msgs:srv/NestedUint8ArrayTestService.srv"
+  ]
+}

@@ -1,0 +1,15 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from rclpy_message_converter_msgs/msg/NestedUint8ArrayTestMessage.msg
+// generated code does not contain a copyright notice
+
+#include "rclpy_message_converter_msgs/msg/Uint8ArrayTestMessage.idl"
+
+module rclpy_message_converter_msgs {
+  module msg {
+    @verbatim (language="comment", text=
+      "array of arrays for testing purposes")
+    struct NestedUint8ArrayTestMessage {
+      sequence<rclpy_message_converter_msgs::msg::Uint8ArrayTestMessage> arrays;
+    };
+  };
+};

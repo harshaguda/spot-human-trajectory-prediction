@@ -1,0 +1,18 @@
+// generated from rosidl_adapter/resource/srv.idl.em
+// with input from rclpy_message_converter_msgs/srv/NestedUint8ArrayTestService.srv
+// generated code does not contain a copyright notice
+
+#include "rclpy_message_converter_msgs/msg/NestedUint8ArrayTestMessage.idl"
+
+module rclpy_message_converter_msgs {
+  module srv {
+    @verbatim (language="comment", text=
+      "service with nested types for testing purposes")
+    struct NestedUint8ArrayTestService_Request {
+      rclpy_message_converter_msgs::msg::NestedUint8ArrayTestMessage input;
+    };
+    struct NestedUint8ArrayTestService_Response {
+      rclpy_message_converter_msgs::msg::NestedUint8ArrayTestMessage output;
+    };
+  };
+};

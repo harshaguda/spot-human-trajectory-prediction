@@ -1,0 +1,6 @@
+setup.py
+rclpy_message_converter_msgs/__init__.py
+rclpy_message_converter_msgs.egg-info/PKG-INFO
+rclpy_message_converter_msgs.egg-info/SOURCES.txt
+rclpy_message_converter_msgs.egg-info/dependency_links.txt
+rclpy_message_converter_msgs.egg-info/top_level.txt
