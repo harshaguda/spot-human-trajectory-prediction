@@ -16,7 +16,7 @@ class DangerZonePublisher(Node):
             self.listener_callback_add_marker,
             10)
         self.subscription_delete = self.create_subscription(
-            DangerZone,
+            DeleteZone,
             '/delete_from_rviz',
             self.listener_callback_delete_marker,
             10)
@@ -27,7 +27,7 @@ class DangerZonePublisher(Node):
 
     def create_circle(self, ID, CoordX, CoordY, radius):
         marker = Marker()
-        marker.header.frame_id = "base_link"
+        marker.header.frame_id = "body"
         marker.id = ID
         marker.type = marker.CYLINDER
         marker.action = marker.ADD
@@ -50,7 +50,7 @@ class DangerZonePublisher(Node):
     
     def create_sector(self, ID, CoordX, CoordY, radius, angle, direction, num_points = 100):
         marker = Marker()
-        marker.header.frame_id = "base_link"
+        marker.header.frame_id = "body"
         marker.id = ID
         marker.type = marker.LINE_STRIP
         marker.action = marker.ADD
@@ -78,6 +78,7 @@ class DangerZonePublisher(Node):
         self.publisher.publish(marker)
     
     def listener_callback_add_marker(self, msg: DangerZone):
+        self.get_logger().info(f"log_ADD {msg.id}")
         position = msg.point
         if msg.theta == 2*np.pi:
             self.create_circle(msg.id,position.x, position.y, msg.r)
@@ -87,20 +88,22 @@ class DangerZonePublisher(Node):
 
     def listener_callback_delete_marker(self, msg: DeleteZone): # Call when: human is no longer detected, circle turns into a sector (shape='CYLINDER'), or sector turns into a circle (shape='LINE_STRIP')
         # shape = 'CYLINDER' or 'LINE_STRIP'
+        self.get_logger().info(f"log_DELETE {msg.id}")
+        shape = msg.shape
         marker = Marker()
-        marker.header.frame_id = "base_link"
+        marker.header.frame_id = "body"
         marker.id = msg.id
-        marker.type = marker.shape
+        if shape == "CYLINDER":
+            marker.type = marker.CYLINDER
+        else:
+            marker.type = marker.LINE_STRIP
         marker.action = marker.DELETE
         self.publisher.publish(marker)
 
 def main(args=None):
         rclpy.init(args=args)
-
         danger_zone_publisher = DangerZonePublisher()
-
         rclpy.spin(danger_zone_publisher)
-
         danger_zone_publisher.destroy_node()
         rclpy.shutdown()
 

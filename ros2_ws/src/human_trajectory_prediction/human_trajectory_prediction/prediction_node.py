@@ -7,6 +7,7 @@ from geometry_msgs.msg import Point
 import numpy as np
 from my_robot_interfaces.msg import DangerZone
 from my_robot_interfaces.msg import DeleteZone
+import time
 import json
 
 class KalmanFilter:
@@ -82,7 +83,7 @@ class PredictionNode(Node):
             String,
             '/trajectories',  # Includes ID, distance to human and angle to human
             self.listener_callback,
-            1)
+            10)
         self.publisher_add = self.create_publisher(
             DangerZone,
             '/add_to_rviz',
@@ -103,6 +104,8 @@ class PredictionNode(Node):
     def listener_callback(self, msg: String):
         # convert message to dictionary
         data = json.loads(msg.data)
+        output_dict = {key: (value['distance'], value['angle']) for key, value in data.items()}
+        data = output_dict
         if not isinstance(data, dict):
             self.get_logger().warn('Received invalid message data type')
             return
@@ -117,20 +120,17 @@ class PredictionNode(Node):
                 else:
                     msg.shape = "LINE_STRIP"
                 self.publisher_delete.publish(msg)
+                time.sleep(0.01)
+                self.get_logger().info(f"delete {ID}")
                 del self.saved_data[ID]
+    
         # process dictionary
-        for ID, coordinates in data.items():
-            if not isinstance(coordinates, dict):
+        for ID, coord in data.items():
+            if not isinstance(coord, tuple):
                 self.get_logger().warn(
                     f'Received invalid coordinates for ID {ID}')
                 continue
-            # for coord in coordinates:
-            #     print(coord)
-            #     if not isinstance(coord, tuple) or len(coord) != 2:
-            #         self.get_logger().warn(
-            #             f'Received invalid coordinate for ID {ID}')
-            #         continue
-            r, theta = coordinates['distance'], coordinates['angle']
+            r, theta = coord
             x, y = self.angle_xy(r, theta)
             # add data to saved dictionary as a kalman filter object
             if ID not in self.saved_data:
@@ -146,6 +146,8 @@ class PredictionNode(Node):
                 msg.r = 0.5
                 msg.theta = 2*np.pi
                 self.publisher_add.publish(msg)
+                time.sleep(0.01)
+                self.get_logger().info(f"Add first {ID}")
             else:
                 person = self.saved_data[ID]
                 person.updateInfo(x, y)
@@ -159,36 +161,21 @@ class PredictionNode(Node):
                 msg.theta = float(person.danger_zone[1])
                 msg.phi = float(person.danger_zone[2])
                 self.publisher_add.publish(msg)
-                    # publish something data for the danger_zone
-
-            self.get_logger().info(f'Received ID: {ID}, x: {x}, y: {y}')
-
-    #     # do something with the saved data
-    #     self.publish_saved_data()
-
-    # def publish_saved_data(self):
-    #     # publish saved data as a dictionary in the same format as received messages
-    #     for ID, person in self.saved_data.items():
-    #         msg = String()
-    #         msg.data = f"{ID}: {person.danger_zone}"
-    #         self.publisher.publish(msg)
-    #         # self.get_logger().info(f'Published saved data: {msg}')
+                time.sleep(0.01)
+                self.get_logger().info(f"Add second {ID}")
 
 
 def main(args=None):
     rclpy.init(args=args)
     node = PredictionNode()
     # Simulate receiving messages
-    # messages = [
-    #     '{"1": [(1, 2), (3, 4), (5, 6)]}',
-    #     '{"2": [(7, 8), (9, 10)]}',
-    #     '{"1": [(7, 8)]}',
-    #     '{"3": [(11, 12), (13, 14)]}',
-    # ]
-    # for msg in messages:
-    #     string_msg = String()
-    #     string_msg.data = msg
-    #     node.listener_callback(string_msg)
+    messages = [
+        '{"1": {"distance": 4, "angle": 2.14}}'
+    ]
+    for msg in messages:
+        string_msg = String()
+        string_msg.data = msg
+        node.listener_callback(string_msg)
 
     # node.get_logger().info('Finished processing messages')
     rclpy.spin(node)
