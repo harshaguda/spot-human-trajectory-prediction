@@ -57,6 +57,7 @@ import sensor_msgs_py.point_cloud2 as pc2
 from lidar2D import LidarCam
 from rosbags.highlevel import AnyReader
 from helper_pointcloud import *
+from std_msgs.msg import Header
 
 # from rospy_message_converter import message_converter
 import json
@@ -66,6 +67,10 @@ from std_msgs.msg import String
 # https://github.com/DFKI-NI/rospy_message_converter/tree/humble
 # from rclpy_message_converter import json_message_converter, message_converter
 # from std_msgs.msg import String
+
+from geometry_msgs.msg import TransformStamped
+
+from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
 
 class ROSTracker(Node):
     
@@ -115,7 +120,10 @@ class ROSTracker(Node):
         )
         
         # self.pub = self.create_publisher(Float32MultiArray, '/trajectories', 10)
+        self.tf_static_broadcaster = StaticTransformBroadcaster(self)
+
         self.pub = self.create_publisher(String, '/trajectories', 10)
+        self.lidar_pub = self.create_publisher(PointCloud2, '/rslidar_points', 100)
 
         timer_period = 0.5  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
@@ -237,9 +245,28 @@ class ROSTracker(Node):
          
         return self.cn
     
+
+    def make_transforms(self, frame_id, child_id, translation, quat):
+        t = TransformStamped()
+
+        t.header.stamp = self.get_clock().now().to_msg()
+        t.header.frame_id = frame_id
+        t.child_frame_id = child_id
+
+        t.transform.translation.x = float(translation.x)
+        t.transform.translation.y = float(translation.y)
+        t.transform.translation.z = float(translation.z)
+        
+        t.transform.rotation.x = quat.x
+        t.transform.rotation.y = quat.y
+        t.transform.rotation.z = quat.z
+        t.transform.rotation.w = quat.w
+
+        self.tf_static_broadcaster.sendTransform(t)
+    
     def rb(self):
         with AnyReader([Path('/home/spot/Downloads/rosbag2_2023_02_14-17_16_36')]) as reader:
-            connections = [x for x in reader.connections if x.topic in ['/rslidar_points', '/spot/left_fisheye_image/compressed', '/spot/right_fisheye_image/compressed', '/spot/back_fisheye_image/compressed']] #,in [ '/rslidar_points']
+            connections = [x for x in reader.connections if x.topic in ['/tf_static', '/rslidar_points', '/spot/left_fisheye_image/compressed', '/spot/right_fisheye_image/compressed', '/spot/back_fisheye_image/compressed']] #,in [ '/rslidar_points']
             
             read_lidar, read_img, lfe_f, rfe_f, bfe_f = False, False, False, False, False
             ld2cam = LidarCam()
@@ -252,20 +279,41 @@ class ROSTracker(Node):
                     
                     self.frame_id_lfe += 1
                     lfe_f = True
-                if connection.topic == '/spot/right_fisheye_image/compressed':
+                elif connection.topic == '/spot/right_fisheye_image/compressed':
                     self.rfe_img = cv2.imdecode( msg.data, cv2.IMREAD_ANYCOLOR )
                     self.frame_id_rfe += 1
                     rfe_f = True
 
-                if connection.topic == '/spot/back_fisheye_image/compressed':
+                elif connection.topic == '/spot/back_fisheye_image/compressed':
                     self.bfe_img = cv2.imdecode( msg.data, cv2.IMREAD_ANYCOLOR )
                     self.frame_id_bfe += 1
                     bfe_f = True
                     
                     read_img=True
-                   
+                elif connection.id == 48:
+                    # print(msg)
+                    for msg_transform in msg.transforms:
+                        self.make_transforms(msg_transform.header.frame_id,msg_transform.child_frame_id, msg_transform.transform.translation, msg_transform.transform.rotation)
+                       
                 
                 elif connection.topic == '/rslidar_points':
+
+                    dtype = np.float32
+                    itemsize = np.dtype(dtype).itemsize # A 32-bit float takes 4 bytes.
+                    
+                    kwargs1 = {'name': 'x', 'offset': 0, 'datatype':PointField.FLOAT32, 'count':1}
+                    kwargs2 = {'name': 'y', 'offset': 4, 'datatype':PointField.FLOAT32, 'count':1}
+                    kwargs3 = {'name': 'z', 'offset': 8, 'datatype':PointField.FLOAT32, 'count':1}
+                    kwargs4 = {'name': 'intensity', 'offset': 16, 'datatype':PointField.FLOAT32, 'count':1}
+
+                    fields = [PointField(**kwargs1),
+                                PointField(**kwargs2),
+                                PointField(**kwargs3),
+                                PointField(**kwargs4),
+                                ]
+                    header = Header()
+                    header.stamp = self.get_clock().now().to_msg()
+                    header.frame_id = 'rslidar'
                 
                     pc = read_points(msg, field_names = ['x','y','z','intensity'], skip_nans=True)
                     cloud_points = []
@@ -273,6 +321,10 @@ class ROSTracker(Node):
                         cloud_points.append(list(p))
                     
                     points = np.array(cloud_points)
+
+                    pc_pub = pc2.create_cloud(header, fields, points)
+                    self.lidar_pub.publish(pc_pub)
+
                     points = points[:, :3]
                 # Add a column of ones
                     points = np.hstack([points, np.ones((points.shape[0], 1))])
