@@ -7,7 +7,7 @@ from geometry_msgs.msg import Point
 import numpy as np
 from my_robot_interfaces.msg import DangerZone
 from my_robot_interfaces.msg import DeleteZone
-
+import json
 
 class KalmanFilter:
     def __init__(self, x0, P0, r, dt, q):
@@ -82,7 +82,7 @@ class PredictionNode(Node):
             String,
             '/trajectories',  # Includes ID, distance to human and angle to human
             self.listener_callback,
-            10)
+            1)
         self.publisher_add = self.create_publisher(
             DangerZone,
             '/add_to_rviz',
@@ -102,7 +102,7 @@ class PredictionNode(Node):
 
     def listener_callback(self, msg: String):
         # convert message to dictionary
-        data = eval(msg.data)
+        data = json.loads(msg.data)
         if not isinstance(data, dict):
             self.get_logger().warn('Received invalid message data type')
             return
@@ -120,47 +120,48 @@ class PredictionNode(Node):
                 del self.saved_data[ID]
         # process dictionary
         for ID, coordinates in data.items():
-            if not isinstance(coordinates, list):
+            if not isinstance(coordinates, dict):
                 self.get_logger().warn(
                     f'Received invalid coordinates for ID {ID}')
                 continue
-            for coord in coordinates:
-                if not isinstance(coord, tuple) or len(coord) != 2:
-                    self.get_logger().warn(
-                        f'Received invalid coordinate for ID {ID}')
-                    continue
-                r, theta = coord
-                x, y = self.angle_xy(r, theta)
-                # add data to saved dictionary as a kalman filter object
-                if ID not in self.saved_data:
-                    P0 = np.eye(4)
-                    x0 = np.array([[x], [y], [0], [0]], dtype=np.float32)
-                    self.saved_data[ID] = Person(
-                        x0, P0, self.r, self.dt, self.q)
-                    position = Point(
-                        x=float(x0[0]), y=float(x0[1]), z=float(0))
-                    msg = DangerZone()
-                    msg.point = position
-                    msg.id = int(ID)
-                    msg.r = 0.5
-                    msg.theta = 2*np.pi
-                    self.publisher_add.publish(msg)
-                else:
-                    person = self.saved_data[ID]
-                    person.updateInfo(x, y)
-                    x_updated = person.ekf.x
-                    position = Point(x=float(x_updated[0]), y=float(
-                        x_updated[1]), z=float(0))
-                    msg = DangerZone()
-                    msg.point = position
-                    msg.id = int(ID)
-                    msg.r = float(person.danger_zone[0])
-                    msg.theta = float(person.danger_zone[1])
-                    msg.phi = float(person.danger_zone[2])
-                    self.publisher_add.publish(msg)
+            # for coord in coordinates:
+            #     print(coord)
+            #     if not isinstance(coord, tuple) or len(coord) != 2:
+            #         self.get_logger().warn(
+            #             f'Received invalid coordinate for ID {ID}')
+            #         continue
+            r, theta = coordinates['distance'], coordinates['angle']
+            x, y = self.angle_xy(r, theta)
+            # add data to saved dictionary as a kalman filter object
+            if ID not in self.saved_data:
+                P0 = np.eye(4)
+                x0 = np.array([[x], [y], [0], [0]], dtype=np.float32)
+                self.saved_data[ID] = Person(
+                    x0, P0, self.r, self.dt, self.q)
+                position = Point(
+                    x=float(x0[0]), y=float(x0[1]), z=float(0))
+                msg = DangerZone()
+                msg.point = position
+                msg.id = int(ID)
+                msg.r = 0.5
+                msg.theta = 2*np.pi
+                self.publisher_add.publish(msg)
+            else:
+                person = self.saved_data[ID]
+                person.updateInfo(x, y)
+                x_updated = person.ekf.x
+                position = Point(x=float(x_updated[0]), y=float(
+                    x_updated[1]), z=float(0))
+                msg = DangerZone()
+                msg.point = position
+                msg.id = int(ID)
+                msg.r = float(person.danger_zone[0])
+                msg.theta = float(person.danger_zone[1])
+                msg.phi = float(person.danger_zone[2])
+                self.publisher_add.publish(msg)
                     # publish something data for the danger_zone
 
-                self.get_logger().info(f'Received ID: {ID}, x: {x}, y: {y}')
+            self.get_logger().info(f'Received ID: {ID}, x: {x}, y: {y}')
 
     #     # do something with the saved data
     #     self.publish_saved_data()
@@ -178,18 +179,18 @@ def main(args=None):
     rclpy.init(args=args)
     node = PredictionNode()
     # Simulate receiving messages
-    messages = [
-        '{"1": [(1, 2), (3, 4), (5, 6)]}',
-        '{"2": [(7, 8), (9, 10)]}',
-        '{"1": [(7, 8)]}',
-        '{"3": [(11, 12), (13, 14)]}',
-    ]
-    for msg in messages:
-        string_msg = String()
-        string_msg.data = msg
-        node.listener_callback(string_msg)
+    # messages = [
+    #     '{"1": [(1, 2), (3, 4), (5, 6)]}',
+    #     '{"2": [(7, 8), (9, 10)]}',
+    #     '{"1": [(7, 8)]}',
+    #     '{"3": [(11, 12), (13, 14)]}',
+    # ]
+    # for msg in messages:
+    #     string_msg = String()
+    #     string_msg.data = msg
+    #     node.listener_callback(string_msg)
 
-    node.get_logger().info('Finished processing messages')
+    # node.get_logger().info('Finished processing messages')
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()
