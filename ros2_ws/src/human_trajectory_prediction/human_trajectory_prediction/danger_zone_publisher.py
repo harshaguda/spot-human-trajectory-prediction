@@ -25,7 +25,7 @@ class DangerZonePublisher(Node):
             '/visualization_marker',
             10)
 
-    def create_circle(self, ID, CoordX, CoordY, radius):
+    def create_circle(self, ID, CoordX, CoordY, radius, num_points = 100):
         marker = Marker()
         marker.header.frame_id = "body"
         marker.id = ID
@@ -47,6 +47,34 @@ class DangerZonePublisher(Node):
         marker.color.b = 0.0
 
         self.publisher.publish(marker)
+        
+        # Alternative with LINE_STRIP
+        '''
+        marker = Marker()
+        marker.header.frame_id = "body"
+        marker.id = ID
+        marker.type = marker.LINE_STRIP
+        marker.action = marker.ADD
+        
+        self.radius = radius
+        
+        for i in range(num_points):
+            theta = 2.0 * math.pi * i / num_points
+            point = Point()
+            point.x = radius * math.cos(theta) + CoordX
+            point.y = radius * math.sin(theta) + CoordY
+            point.z = 0.0
+            marker.points.append(point)
+            
+        marker.scale.x = 0.01  # Set the width of the line
+
+        marker.color.a = 1.0 # Transparency
+        marker.color.r = 1.0
+        marker.color.g = 0.0
+        marker.color.b = 0.0
+
+        self.publisher.publish(marker)
+        '''
     
     def create_sector(self, ID, CoordX, CoordY, radius, angle, direction, num_points = 100):
         marker = Marker()
