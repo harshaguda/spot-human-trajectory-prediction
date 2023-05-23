@@ -27,7 +27,7 @@ class DangerZonePublisher(Node):
 
     def create_circle(self, ID, CoordX, CoordY, radius):
         marker = Marker()
-        marker.header.frame_id = "base_link"
+        marker.header.frame_id = "body"
         marker.id = ID
         marker.type = marker.CYLINDER
         marker.action = marker.ADD
@@ -50,7 +50,7 @@ class DangerZonePublisher(Node):
     
     def create_sector(self, ID, CoordX, CoordY, radius, angle, direction, num_points = 100):
         marker = Marker()
-        marker.header.frame_id = "base_link"
+        marker.header.frame_id = "body"
         marker.id = ID
         marker.type = marker.LINE_STRIP
         marker.action = marker.ADD
@@ -79,16 +79,18 @@ class DangerZonePublisher(Node):
     
     def listener_callback_add_marker(self, msg: DangerZone):
         position = msg.point
-        if msg.theta == 2*np.pi:
-            self.create_circle(msg.id,position.x, position.y, msg.r)
-        else:
-            self.create_sector(msg.id,position.x, position.y, msg.r, msg.theta, msg.phi)
+        self.create_circle(msg.id,position.x, position.y, msg.r)
+
+        # if msg.theta == 2*np.pi:
+        #     self.create_circle(msg.id,position.x, position.y, msg.r)
+        # else:
+        #     self.create_sector(msg.id,position.x, position.y, msg.r, msg.theta, msg.phi)
          
 
     def listener_callback_delete_marker(self, msg: DeleteZone): # Call when: human is no longer detected, circle turns into a sector (shape='CYLINDER'), or sector turns into a circle (shape='LINE_STRIP')
         # shape = 'CYLINDER' or 'LINE_STRIP'
         marker = Marker()
-        marker.header.frame_id = "base_link"
+        marker.header.frame_id = "body"
         marker.id = msg.id
         marker.type = marker.shape
         marker.action = marker.DELETE
