@@ -54,7 +54,9 @@ class LidarCam():
                                                 0.000 , 0.000,  0.000,  1.000]).reshape((4,4))
         self.k_rfe = np.array([ 255.8085174560547, 0.0, 314.3297424316406, 0.0, 255.8085174560547, 240.5596466064453, 0.0, 0.0, 1.0]).reshape(3,3)
 
-        self.P_rfe = np.insert(self.k_rfe, 3, values=[-0.093, -0.111, 0.031], axis=1)
+        # self.P_rfe = np.insert(self.k_rfe, 3, values=[-0.093, -0.111, 0.031], axis=1)
+        self.P_rfe = np.insert(self.k_rfe, 3, values=[0, 0, 0], axis=1)
+
 
 
 
@@ -62,7 +64,9 @@ class LidarCam():
         self.P_rfe =  np.array([255.8085174560547,0.0,314.3297424316406,0.0,0.0,255.2574462890625,240.5596466064453,0.0,0.0,0.0,1.0,0.0]).reshape(3,4)
         back_tra = [0.07997186021560002, -0.00328245601495, 0.00046498809582900006]
         self.k_lfe = np.array([ 255.06076049804688, 0.0, 315.1103820800781, 0.0, 254.58456420898438, 238.33242797851562, 0.0, 0.0, 1.0]).reshape(3,3)
-        self.P_lfe = np.insert(self.k_lfe,3,values=[0.088,0.072, -0.097],axis=1)
+        # self.P_lfe = np.insert(self.k_lfe,3,values=[0.088,0.072, -0.097],axis=1)
+        self.P_lfe = np.insert(self.k_lfe,3,values=[0,0, 0],axis=1)
+
         self.k_bfe = np.array([256.9691467285156, 0.0, 320.87396240234375, 0.0, 256.9691467285156, 240.7810516357422, 0.0, 0.0, 1.0]).reshape(3,3)
 
     #     x: 0.07494902694690002
@@ -98,16 +102,20 @@ class LidarCam():
         outlier = np.logical_or(u_out, v_out)
         cam = np.delete(cam,np.where(outlier),axis=1)
 
-        lid2D = np.zeros((IMG_H, IMG_W))
+        lid2D = np.zeros((IMG_H, IMG_W), dtype=np.float64)
         for i, j, k in zip(u,v, z):
             if (i > IMG_W) or (j > IMG_H) or (i < 0) or (j < 0):
                 continue
 
             lid2D[int(j)][int(i)] = k
+            # print(k)
             cv2.circle(img, (int(i), int(j)), 1, self.color, -1)
 
-        return cam, img, np.repeat(lid2D,3).reshape(480,-1,3)
-    def angle_point(self, x, k_bfe, IMG_W):
-        fov = 2*np.arctan(IMG_W/(2*k_bfe[0,0]))
-        return ((x - k_bfe[0,2])/IMG_W)*fov
+        return cam, img, lid2D#np.repeat(lid2D,3).reshape(480,-1,3)
+    def angle_point(self, x, K, IMG_W):
+        foc_len = (K[0][0] +K[1][1])/2
+        fov = 2*np.arctan(IMG_W/(2*K[0,0]))
+        theta = (x- K[0][2])/foc_len
+        # return theta
+        return ((x - K[0,2])/IMG_W)*fov
     
