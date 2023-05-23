@@ -155,7 +155,8 @@ class ROSTracker(Node):
         self.show_vid = show_vid
         self.retina_masks = retina_masks
         self.rfe_img = np.zeros((480,640))
-        self.ld_img = np.zeros((480,640))
+        self.dangles = []
+        # self.ld_img = np.zeros((480,640))
         self.ld2D = LidarCam()
         self.frame_id_rfe = 0
         self.frame_id_bfe = 0
@@ -227,6 +228,11 @@ class ROSTracker(Node):
         cylinder = cv2.remap(img, (points[:, :, 0]).astype(np.float32), (points[:, :, 1]).astype(np.float32), cv2.INTER_LINEAR)
         return cylinder
 
+    def planar(self, img, K):
+        foc_len = (K[0][0] +K[1][1])/2
+        cylinder = np.zeros_like(img)
+        temp = np.mgrid[0:img.shape[1],0:img.shape[0]]
+        x,y = temp[0],temp[1]
     
     def stitchimages(self, lfe, bfe, rfe, img=False):
         img_cyl_lfe = self.cylindrical_warp(lfe, self.k_lfe)
@@ -236,13 +242,17 @@ class ROSTracker(Node):
         i2 = img_cyl_bfe[:,95:529]
         img_cyl_rfe = cv2.rotate(img_cyl_rfe, cv2.ROTATE_180)
         i3 = img_cyl_rfe[:,95:546]
+        # print(img, i3.dtype, i2.dtype)
       
         if img:
             self.cn = np.concatenate((i3, i2 ,i1), axis=1, dtype=np.uint8) 
 
         else:
+            
             self.cn = np.concatenate((i3, i2 ,i1), axis=1) 
-         
+            # print(self.cn.dtype)
+            crp_nz = self.cn[np.nonzero(self.cn)]
+            # print('crp: ', crp_nz.flatten())
         return self.cn
     
 
@@ -265,7 +275,9 @@ class ROSTracker(Node):
         self.tf_static_broadcaster.sendTransform(t)
     
     def rb(self):
-        with AnyReader([Path('/home/spot/Downloads/rosbag2_2023_02_14-17_16_36')]) as reader:
+        # with AnyReader([Path('/home/spot/Downloads/rosbag2_2023_02_14-17_16_36')]) as reader:
+        with AnyReader([Path('/home/spot/Downloads/rosbag2_2023_05_23-12_20_19')]) as reader:
+        # with AnyReader([Path('/home/spot/rosbags/rosbag2_2023_05_23-14_02_50')]) as reader:
             connections = [x for x in reader.connections if x.topic in ['/tf_static', '/rslidar_points', '/spot/left_fisheye_image/compressed', '/spot/right_fisheye_image/compressed', '/spot/back_fisheye_image/compressed']] #,in [ '/rslidar_points']
             
             read_lidar, read_img, lfe_f, rfe_f, bfe_f = False, False, False, False, False
@@ -335,13 +347,16 @@ class ROSTracker(Node):
                     lfe_f = False
                     bfe_f = False
                     rfe_f = False
+                    cn_img = self.stitchimages(self.lfe_img, self.bfe_img, self.rfe_img, img=True)
+                    self.callback(cn_img, points)
                     # self.cam, _ = self.ld2D.projection(self.lfe_img, points, self.ld2D.rslidar_to_body, self.ld2D.left_fisheye_to_body, self.ld2D.P_lfe)
                     self.cam, _, self.ld_lfe = ld2cam.projection(self.lfe_img, points, ld2cam.rslidar_to_body, ld2cam.left_fisheye_to_body, ld2cam.P_lfe )
                     self.cam, _, self.ld_bfe  = ld2cam.projection(self.bfe_img, points, ld2cam.rslidar_to_body, ld2cam.body_to_back_fisheye, ld2cam.P_bfe )
                     self.cam, _, self.ld_rfe = ld2cam.projection(self.rfe_img, points, ld2cam.rslidar_to_body, ld2cam.right_fisheye_to_body, ld2cam.P_rfe)
-                    cn_img = self.stitchimages(self.lfe_img, self.bfe_img, self.rfe_img, img=True)
+                    # crp_nz = self.ld_bfe[np.nonzero(self.ld_bfe)]
+                    # print(crp_nz.flatten())
                     self.ld_img = self.stitchimages(self.ld_lfe, self.ld_bfe, self.ld_rfe)
-                    self.callback(cn_img, points)
+                    
                     # cv2.imshow('img', self.ld_img)
                     # cv2.waitKey(1)
     @torch.no_grad()
@@ -446,18 +461,53 @@ class ROSTracker(Node):
                            
                             # ld_an.box_label(bbox, label, color=color)
                             p1, p2 = (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3]))
+                            x1, y1 = p1
+                            x2, y2 = p2
+                            
+                            crp = self.ld_img[y1:y2, x1:x2]
+                            # print(crp)
+                            # np.save('crp.npy', crp)
+                            # exit()
+                            # crp= np.where(crp < 15, crp, 0)
+                            crp_nz = crp[np.nonzero(crp)]
+                            m = crp[np.where((crp < 4))].max()
+                            # distance = crp[np.where((crp > m-1.5 )& (crp < m-0.5) )].mean()
+                            # distance = crp[np.where((crp > 2) & (crp < 4))].max()
+                            
+                            # np.save('crp.npy', crp_nz)
+                            # exit()
+                            # print('crp 2: ', crp_nz.flatten())
+                            # if  np.count_nonzero(crp) == 0:
+                            #     continue
+                            
+                            # print('Min Max: ', np.min(crp_nz), np.max(crp_nz), np.mean(crp_nz))
+                            # cv2.imshow('crp', crp)
                             xm, ym = int((p1[0]+p2[0])/2), int((p1[1]+p2[1])/2)
-                            crp = self.ld_img[ym-15:ym+15, xm-15:xm+15]
-                            distance = crp.sum() / np.count_nonzero(crp)
+                            # crp = self.ld_img[ym-15:ym+15, xm-15:xm+15]
+                            # crp_nz = crp[np.nonzero(crp)]
+                            # distance = crp.sum() / np.count_nonzero(crp)
+                            # print(type(id))
+                            # if id == 1:
                             if xm <= 451:
                                 xm = (xm/451)*640
-                                angle = self.ld2D.angle_point( xm, self.ld2D.k_lfe, self.ld2D.IMG_W) - self.right_cam_angle
+                                # print('1 ', xm)
+                                distance = crp[np.where((crp > 1) & (crp < 4))].mean()
+                                angle_o = self.ld2D.angle_point( xm, self.ld2D.k_rfe, self.ld2D.IMG_W) 
+                                
+                                angle = -angle_o + self.right_cam_angle + 0.3 #+ np.pi/2
                             if (xm >451) & (xm <= 885):
-                                xm = (xm/434)*640
-                                angle = self.ld2D.angle_point( xm, self.ld2D.k_lfe, self.ld2D.IMG_W) - self.back_cam_angle
+                                
+                                xm = ((xm - 451)/434)*640
+                                # print('2 ', xm)
+                                distance = crp[np.where((crp > 1) & (crp < 5))].mean() + 0.54
+                                angle_o = self.ld2D.angle_point( xm, self.ld2D.k_bfe, self.ld2D.IMG_W)
+                                angle = -angle_o + self.back_cam_angle
                             if xm > 885:
-                                xm = (xm/457)*640
-                                angle = self.ld2D.angle_point( xm, self.ld2D.k_lfe, self.ld2D.IMG_W) - self.left_cam_angle
+                                xm = ((xm - 885)/457)*640
+                                distance = crp[np.where((crp > 1) & (crp < 4))].mean()
+                                # print('3 ', xm)
+                                angle_o = self.ld2D.angle_point( xm, self.ld2D.k_lfe, self.ld2D.IMG_W)
+                                angle = angle_o + self.left_cam_angle #- np.pi/2
                             
                             # cv2.imshow('crp', self.ld_img[ym-15:ym+15, xm-15:xm+15])
                             # u, v, z = self.cam
@@ -468,13 +518,18 @@ class ROSTracker(Node):
 
                             # _, _, d=np.take(self.cam,np.where(outlier),axis=1).reshape(3, -1)
                             traj_dict[id] = {'distance':distance, 'angle':angle}
+                            self.dangles.append({'distance':distance, 'angle':angle})
+                            np.save('dangles.npy', np.array(self.dangles))
+                            print(traj_dict, 'angle o ', angle_o)
+                            # traj_dict[id] = {'distance':2.964, 'angle':3.0469}
+
                             
                             if self.save_trajectories and self.tracking_method == 'strongsort':
                                 q = output[7]
                                 self.tracker_list[i].trajectory(im0, q, color=color)
                         # data = message_converter.convert_dictionary_to_ros_message('std_msgs/msg/String', traj_dict)
                         msg = String()
-                        print(traj_dict)
+                        # print(traj_dict, 'Angle o ', angle_o)
                         msg.data = json.dumps(traj_dict)
                         self.pub.publish(msg)
             else:
@@ -490,6 +545,7 @@ class ROSTracker(Node):
                 cv2.resizeWindow(str('sth'), im0.shape[1], im0.shape[0])
                
                 cv2.imshow(str('sth'), im0)
+                # cv2.imshow('LiDar', ld2d)
                
 
                 if cv2.waitKey(1) == ord('q'):  # 1 millisecond
