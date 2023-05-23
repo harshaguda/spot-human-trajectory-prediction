@@ -11,7 +11,7 @@ import time
 import json
 
 class KalmanFilter:
-    def __init__(self, x0, P0, r, dt, q):
+    def __init__(self, x0, P0, dt, q):
         """
         Initializes the Kalman Filter.
 
@@ -37,7 +37,10 @@ class KalmanFilter:
                            [0, dt**2/2, 0, dt]]) * q**2
         self.H = np.array([[1, 0, 0, 0],
                            [0, 1, 0, 0]])
-        self.R = r ** 2 * np.eye(2)
+        #self.R = r ** 2 * np.eye(2)
+        self.varxr = 0.0004087833861347023
+        self.vary = 3.0162198165008403e-05
+        self.R = np.array([[self.varx, 0],[0, self.vary]])
 
     def predict(self):
         self.x = np.dot(self.F, self.x)
@@ -54,8 +57,8 @@ class KalmanFilter:
 
 class Person:
 
-    def __init__(self, x0, P0, r, dt, q):
-        self.ekf = KalmanFilter(x0, P0, r, dt, q)
+    def __init__(self, x0, P0, dt, q):
+        self.ekf = KalmanFilter(x0, P0, dt, q)
         # self.danger_zone_publisher = DangerZonePublisher(x0)
         self.r_static = 0.55
         self.mv = 1.3
@@ -94,7 +97,6 @@ class PredictionNode(Node):
             10)
         self.saved_data = {}
         self.dt = 0.01  # update that
-        self.r = 0.5  # update that
         self.q = 0.1  # update that
 
     def angle_xy(self, r, theta):
@@ -137,7 +139,7 @@ class PredictionNode(Node):
                 P0 = np.eye(4)
                 x0 = np.array([[x], [y], [0], [0]], dtype=np.float32)
                 self.saved_data[ID] = Person(
-                    x0, P0, self.r, self.dt, self.q)
+                    x0, P0, self.dt, self.q)
                 position = Point(
                     x=float(x0[0]), y=float(x0[1]), z=float(0))
                 msg = DangerZone()
