@@ -276,7 +276,7 @@ class ROSTracker(Node):
     
     def rb(self):
         # with AnyReader([Path('/home/spot/Downloads/rosbag2_2023_02_14-17_16_36')]) as reader:
-        with AnyReader([Path('/home/spot/Downloads/rosbag2_2023_05_23-12_20_19')]) as reader:
+        with AnyReader([Path('/home/spot/Downloads/rosbag2_2023_05_23-17_24_15')]) as reader:
         # with AnyReader([Path('/home/spot/rosbags/rosbag2_2023_05_23-14_02_50')]) as reader:
             connections = [x for x in reader.connections if x.topic in ['/tf_static', '/rslidar_points', '/spot/left_fisheye_image/compressed', '/spot/right_fisheye_image/compressed', '/spot/back_fisheye_image/compressed']] #,in [ '/rslidar_points']
             
@@ -491,7 +491,7 @@ class ROSTracker(Node):
                             if xm <= 451:
                                 xm = (xm/451)*640
                                 # print('1 ', xm)
-                                distance = crp[np.where((crp > 1) & (crp < 4))].mean()
+                                distance = crp[np.where((crp > 1) & (crp < 4))].mean() -0.1
                                 angle_o = self.ld2D.angle_point( xm, self.ld2D.k_rfe, self.ld2D.IMG_W) 
                                 
                                 angle = -angle_o + self.right_cam_angle + 0.3 #+ np.pi/2
@@ -499,15 +499,15 @@ class ROSTracker(Node):
                                 
                                 xm = ((xm - 451)/434)*640
                                 # print('2 ', xm)
-                                distance = crp[np.where((crp > 1) & (crp < 5))].mean() + 0.54
+                                distance = crp[np.where((crp > 1) & (crp < 4))].mean() - 0.2#+ 0.54
                                 angle_o = self.ld2D.angle_point( xm, self.ld2D.k_bfe, self.ld2D.IMG_W)
                                 angle = -angle_o + self.back_cam_angle
                             if xm > 885:
                                 xm = ((xm - 885)/457)*640
-                                distance = crp[np.where((crp > 1) & (crp < 4))].mean()
+                                distance = crp[np.where((crp > 1) & (crp < 4))].mean() -0.3
                                 # print('3 ', xm)
                                 angle_o = self.ld2D.angle_point( xm, self.ld2D.k_lfe, self.ld2D.IMG_W)
-                                angle = angle_o + self.left_cam_angle #- np.pi/2
+                                angle = -angle_o + self.left_cam_angle #- np.pi/2
                             
                             # cv2.imshow('crp', self.ld_img[ym-15:ym+15, xm-15:xm+15])
                             # u, v, z = self.cam
