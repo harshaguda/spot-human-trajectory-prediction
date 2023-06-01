@@ -1,14 +1,8 @@
 import numpy as np
 
-# from pathlib import Path
-
-# from rosbags.highlevel import AnyReader
-# from lidar2D import LidarCam
-
 from sensor_msgs.msg import PointCloud2, PointField
 from typing import Iterable, List, NamedTuple, Optional
 import sys
-# create reader instance and open for reading
 
 _DATATYPES = {}
 _DATATYPES[PointField.INT8] = np.dtype(np.int8)

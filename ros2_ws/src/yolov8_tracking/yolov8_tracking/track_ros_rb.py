@@ -119,7 +119,6 @@ class ROSTracker(Node):
             depth=1
         )
         
-        # self.pub = self.create_publisher(Float32MultiArray, '/trajectories', 10)
         self.tf_static_broadcaster = StaticTransformBroadcaster(self)
 
         self.pub = self.create_publisher(String, '/trajectories', 10)
@@ -212,6 +211,15 @@ class ROSTracker(Node):
         self.rb()
     
     def cylindrical_warp(self, img,K):
+        """
+        cylindrical_warp function is used to convert the fisheye image captured by spot 
+        robot to convert into a cylindrical image to remove the distortions created by
+        fisheye view.
+
+        Inputs:
+        img: cv2 image.
+        K: camera intrinsic property, can be retrieved from the /spot/<camera>_camera_info topic
+        """
         foc_len = (K[0][0] +K[1][1])/2
         cylinder = np.zeros_like(img)
         temp = np.mgrid[0:img.shape[1],0:img.shape[0]]
@@ -235,6 +243,16 @@ class ROSTracker(Node):
         x,y = temp[0],temp[1]
     
     def stitchimages(self, lfe, bfe, rfe, img=False):
+        """
+        stitchimages functions takes in three images, performs cylindrical warp and concateantes
+        them together. It works with both images and Lidar2D.
+        Inputs:
+        lfe: left fisheye image
+        bfe: back fisheye image
+        rfe: right fisheye image
+        img: Boolean it is used to specify if the given inputs are whether cv2 images or the 
+        Lidar2D
+        """
         img_cyl_lfe = self.cylindrical_warp(lfe, self.k_lfe)
         img_cyl_bfe = self.cylindrical_warp(bfe, self.k_bfe)
         img_cyl_rfe = self.cylindrical_warp(rfe, self.k_rfe)
@@ -257,6 +275,11 @@ class ROSTracker(Node):
     
 
     def make_transforms(self, frame_id, child_id, translation, quat):
+        """
+        This function is used to publish the tf frame, which is required to visualise the 
+        Lidar pointclouds.
+        Taken from: https://docs.ros.org/en/rolling/Tutorials/Intermediate/Tf2/Writing-A-Tf2-Static-Broadcaster-Py.html
+        """
         t = TransformStamped()
 
         t.header.stamp = self.get_clock().now().to_msg()
@@ -459,35 +482,16 @@ class ROSTracker(Node):
                             color = colors(c, True)
                             annotator.box_label(bbox, label, color=color)
                            
-                            # ld_an.box_label(bbox, label, color=color)
                             p1, p2 = (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3]))
                             x1, y1 = p1
                             x2, y2 = p2
                             
                             crp = self.ld_img[y1:y2, x1:x2]
-                            # print(crp)
-                            # np.save('crp.npy', crp)
-                            # exit()
-                            # crp= np.where(crp < 15, crp, 0)
                             crp_nz = crp[np.nonzero(crp)]
                             m = crp[np.where((crp < 4))].max()
-                            # distance = crp[np.where((crp > m-1.5 )& (crp < m-0.5) )].mean()
-                            # distance = crp[np.where((crp > 2) & (crp < 4))].max()
                             
-                            # np.save('crp.npy', crp_nz)
-                            # exit()
-                            # print('crp 2: ', crp_nz.flatten())
-                            # if  np.count_nonzero(crp) == 0:
-                            #     continue
-                            
-                            # print('Min Max: ', np.min(crp_nz), np.max(crp_nz), np.mean(crp_nz))
-                            # cv2.imshow('crp', crp)
                             xm, ym = int((p1[0]+p2[0])/2), int((p1[1]+p2[1])/2)
-                            # crp = self.ld_img[ym-15:ym+15, xm-15:xm+15]
-                            # crp_nz = crp[np.nonzero(crp)]
-                            # distance = crp.sum() / np.count_nonzero(crp)
-                            # print(type(id))
-                            # if id == 1:
+                            
                             if xm <= 451:
                                 xm = (xm/451)*640
                                 # print('1 ', xm)
@@ -508,12 +512,6 @@ class ROSTracker(Node):
                                 # print('3 ', xm)
                                 angle_o = self.ld2D.angle_point( xm, self.ld2D.k_lfe, self.ld2D.IMG_W)
                                 angle = -angle_o + self.left_cam_angle #- np.pi/2
-                            
-                            # cv2.imshow('crp', self.ld_img[ym-15:ym+15, xm-15:xm+15])
-                            # u, v, z = self.cam
-                            # u_out = np.logical_and(u<xm+10, u>xm-10)
-                            # v_out = np.logical_and(v<ym+10, v>ym-10)
-                            # outlier = np.logical_and(u_out, v_out)
 
 
                             # _, _, d=np.take(self.cam,np.where(outlier),axis=1).reshape(3, -1)
@@ -554,54 +552,8 @@ class ROSTracker(Node):
         
 
             self.prev_frames[i] = self.curr_frames[i]
-            
-        # Print total time (preprocessing + inference + NMS + tracking)
-        # LOGGER.info(f"{s}{'' if len(det) else '(no detections), '}{sum([dt.dt for dt in self.dt if hasattr(dt, 'dt')]) * 1E3:.1f}ms")
-
-        # Print results
 
 
-def parse_opt():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--yolo-weights', nargs='+', type=Path, default=WEIGHTS / 'yolov8s-seg.pt', help='model.pt path(s)')
-    parser.add_argument('--reid-weights', type=Path, default=WEIGHTS / 'lmbn_n_cuhk03_d.pt')
-    parser.add_argument('--tracking-method', type=str, default='deepocsort', help='deepocsort, botsort, strongsort, ocsort, bytetrack')
-    parser.add_argument('--tracking-config', type=Path, default=None)
-    parser.add_argument('--source', type=str, default='0', help='file/dir/URL/glob, 0 for webcam')  
-    parser.add_argument('--imgsz', '--img', '--img-size', nargs='+', type=int, default=[640], help='inference size h,w')
-    parser.add_argument('--conf-thres', type=float, default=0.5, help='confidence threshold')
-    parser.add_argument('--iou-thres', type=float, default=0.5, help='NMS IoU threshold')
-    parser.add_argument('--max-det', type=int, default=1000, help='maximum detections per image')
-    parser.add_argument('--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
-    parser.add_argument('--show-vid', action='store_true', help='display tracking video results')
-    parser.add_argument('--save-txt', action='store_true', help='save results to *.txt')
-    parser.add_argument('--save-conf', action='store_true', help='save confidences in --save-txt labels')
-    parser.add_argument('--save-crop', action='store_true', help='save cropped prediction boxes')
-    parser.add_argument('--save-trajectories', action='store_true', help='save trajectories for each track')
-    parser.add_argument('--save-vid', action='store_true', help='save video tracking results')
-    parser.add_argument('--nosave', action='store_true', help='do not save images/videos')
-    # class 0 is person, 1 is bycicle, 2 is car... 79 is oven
-    parser.add_argument('--classes', nargs='+', type=int, help='filter by class: --classes 0, or --classes 0 2 3')
-    parser.add_argument('--agnostic-nms', action='store_true', help='class-agnostic NMS')
-    parser.add_argument('--augment', action='store_true', help='augmented inference')
-    parser.add_argument('--visualize', action='store_true', help='visualize features')
-    parser.add_argument('--update', action='store_true', help='update all models')
-    parser.add_argument('--project', default=ROOT / 'runs' / 'track', help='save results to project/name')
-    parser.add_argument('--name', default='exp', help='save results to project/name')
-    parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
-    parser.add_argument('--line-thickness', default=2, type=int, help='bounding box thickness (pixels)')
-    parser.add_argument('--hide-labels', default=False, action='store_true', help='hide labels')
-    parser.add_argument('--hide-conf', default=False, action='store_true', help='hide confidences')
-    parser.add_argument('--hide-class', default=False, action='store_true', help='hide IDs')
-    parser.add_argument('--half', action='store_true', help='use FP16 half-precision inference')
-    parser.add_argument('--dnn', action='store_true', help='use OpenCV DNN for ONNX inference')
-    parser.add_argument('--vid-stride', type=int, default=1, help='video frame-rate stride')
-    parser.add_argument('--retina-masks', action='store_true', help='whether to plot masks in native resolution')
-    opt = parser.parse_args()
-    opt.imgsz *= 2 if len(opt.imgsz) == 1 else 1  # expand
-    opt.tracking_config = ROOT / 'trackers' / opt.tracking_method / 'configs' / (opt.tracking_method + '.yaml')
-    print_args(vars(opt))
-    return opt
 
 
 
