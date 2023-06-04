@@ -9,6 +9,9 @@ git clone https://github.com/harshaguda/spot-human-trajectory-prediction.git
 cd spot-human-trajectory-prediction
 pip install -r requirements.txt
 cd os2_ws/src/yolov8_tracking/yolov8_tracking
-python3 track_ros_rb.py 
+python3 track_ros_rb.py
+cd ros2_ws/src/human_trajectory_prediction/human_trajectory_prediction
+python3 danger_zpne_publisher.py
+python3 prediction_node.py
 ```
 If you find issues with visualizing in RViz, try running a ros bag and visualize it, then without closing RViz stop the rosbag and run the above python script.
