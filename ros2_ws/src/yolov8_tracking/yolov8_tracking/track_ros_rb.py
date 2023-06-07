@@ -34,15 +34,15 @@ if str(ROOT / 'trackers' / 'strongsort') not in sys.path:
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 
 import logging
-from yolov8.ultralytics.nn.autobackend import AutoBackend
-from yolov8.ultralytics.yolo.data.dataloaders.stream_loaders import LoadImages, LoadStreams
-from yolov8.ultralytics.yolo.data.utils import IMG_FORMATS, VID_FORMATS
-from yolov8.ultralytics.yolo.utils import DEFAULT_CFG, LOGGER, SETTINGS, callbacks, colorstr, ops
-from yolov8.ultralytics.yolo.utils.checks import check_file, check_imgsz, check_imshow, print_args, check_requirements
-from yolov8.ultralytics.yolo.utils.files import increment_path
-from yolov8.ultralytics.yolo.utils.torch_utils import select_device
-from yolov8.ultralytics.yolo.utils.ops import Profile, non_max_suppression, scale_boxes, process_mask, process_mask_native
-from yolov8.ultralytics.yolo.utils.plotting import Annotator, colors, save_one_box
+from ultralytics.nn.autobackend import AutoBackend
+from ultralytics.yolo.data.dataloaders.stream_loaders import LoadImages, LoadStreams
+from ultralytics.yolo.data.utils import IMG_FORMATS, VID_FORMATS
+from ultralytics.yolo.utils import DEFAULT_CFG, LOGGER, SETTINGS, callbacks, colorstr, ops
+from ultralytics.yolo.utils.checks import check_file, check_imgsz, check_imshow, print_args, check_requirements
+from ultralytics.yolo.utils.files import increment_path
+from ultralytics.yolo.utils.torch_utils import select_device
+from ultralytics.yolo.utils.ops import Profile, non_max_suppression, scale_boxes, process_mask, process_mask_native
+from ultralytics.yolo.utils.plotting import Annotator, colors, save_one_box
 
 from trackers.multi_tracker_zoo import create_tracker
 
@@ -62,11 +62,7 @@ from std_msgs.msg import Header
 # from rospy_message_converter import message_converter
 import json
 from std_msgs.msg import String
-# dictionary = { 'data': 'Howdy' }
-# message = message_converter.convert_dictionary_to_ros_message('std_msgs/String', dictionary)
-# https://github.com/DFKI-NI/rospy_message_converter/tree/humble
-# from rclpy_message_converter import json_message_converter, message_converter
-# from std_msgs.msg import String
+
 
 from geometry_msgs.msg import TransformStamped
 
@@ -155,7 +151,6 @@ class ROSTracker(Node):
         self.retina_masks = retina_masks
         self.rfe_img = np.zeros((480,640))
         self.dangles = []
-        # self.ld_img = np.zeros((480,640))
         self.ld2D = LidarCam()
         self.frame_id_rfe = 0
         self.frame_id_bfe = 0
@@ -216,9 +211,11 @@ class ROSTracker(Node):
         robot to convert into a cylindrical image to remove the distortions created by
         fisheye view.
 
-        Inputs:
-        img: cv2 image.
-        K: camera intrinsic property, can be retrieved from the /spot/<camera>_camera_info topic
+        Args:
+        img (np.array): cv2 image.
+        K (np.array): camera intrinsic property, can be retrieved from the /spot/<camera>_camera_info topic
+        Returns:
+        cylinder (np.array): Cylindrically warped image.
         """
         foc_len = (K[0][0] +K[1][1])/2
         cylinder = np.zeros_like(img)
@@ -236,22 +233,20 @@ class ROSTracker(Node):
         cylinder = cv2.remap(img, (points[:, :, 0]).astype(np.float32), (points[:, :, 1]).astype(np.float32), cv2.INTER_LINEAR)
         return cylinder
 
-    def planar(self, img, K):
-        foc_len = (K[0][0] +K[1][1])/2
-        cylinder = np.zeros_like(img)
-        temp = np.mgrid[0:img.shape[1],0:img.shape[0]]
-        x,y = temp[0],temp[1]
+    
     
     def stitchimages(self, lfe, bfe, rfe, img=False):
         """
         stitchimages functions takes in three images, performs cylindrical warp and concateantes
         them together. It works with both images and Lidar2D.
-        Inputs:
+        Args:
         lfe: left fisheye image
         bfe: back fisheye image
         rfe: right fisheye image
         img: Boolean it is used to specify if the given inputs are whether cv2 images or the 
         Lidar2D
+        Returns:
+        cn (np.array): Stitched image.
         """
         img_cyl_lfe = self.cylindrical_warp(lfe, self.k_lfe)
         img_cyl_bfe = self.cylindrical_warp(bfe, self.k_bfe)
@@ -260,18 +255,15 @@ class ROSTracker(Node):
         i2 = img_cyl_bfe[:,95:529]
         img_cyl_rfe = cv2.rotate(img_cyl_rfe, cv2.ROTATE_180)
         i3 = img_cyl_rfe[:,95:546]
-        # print(img, i3.dtype, i2.dtype)
       
         if img:
-            self.cn = np.concatenate((i3, i2 ,i1), axis=1, dtype=np.uint8) 
+            cn = np.concatenate((i3, i2 ,i1), axis=1, dtype=np.uint8) 
 
         else:
             
-            self.cn = np.concatenate((i3, i2 ,i1), axis=1) 
-            # print(self.cn.dtype)
+            cn = np.concatenate((i3, i2 ,i1), axis=1) 
             crp_nz = self.cn[np.nonzero(self.cn)]
-            # print('crp: ', crp_nz.flatten())
-        return self.cn
+        return cn
     
 
     def make_transforms(self, frame_id, child_id, translation, quat):
@@ -298,44 +290,52 @@ class ROSTracker(Node):
         self.tf_static_broadcaster.sendTransform(t)
     
     def rb(self):
+        """
+        Performs the routine of serial read of rosbag, transforming image, stitching image, fusing with LiDAR data to get distance and angle.
+        """
         # with AnyReader([Path('/home/spot/Downloads/rosbag2_2023_02_14-17_16_36')]) as reader:
         with AnyReader([Path('/home/spot/Downloads/rosbag2_2023_05_23-17_24_15')]) as reader:
         # with AnyReader([Path('/home/spot/rosbags/rosbag2_2023_05_23-14_02_50')]) as reader:
+            # Looks for given topics.
             connections = [x for x in reader.connections if x.topic in ['/tf_static', '/rslidar_points', '/spot/left_fisheye_image/compressed', '/spot/right_fisheye_image/compressed', '/spot/back_fisheye_image/compressed']] #,in [ '/rslidar_points']
-            
+            # Flags to make it wait till all the required data is received.
             read_lidar, read_img, lfe_f, rfe_f, bfe_f = False, False, False, False, False
+            # Initialise the Lidar fusion obj.
             ld2cam = LidarCam()
             for connection, timestamp, rawdata in reader.messages(connections=connections):
-                # lidar = reader.deserialize(rawdata, connection.msgtype)
+                # Read each message serially.
                 msg = reader.deserialize(rawdata, connection.msgtype)
-                
+                # Read left fisheye image
                 if connection.topic == '/spot/left_fisheye_image/compressed':
                     self.lfe_img = cv2.imdecode( msg.data, cv2.IMREAD_ANYCOLOR )
                     
                     self.frame_id_lfe += 1
                     lfe_f = True
+
+                # Read right fisheye image
                 elif connection.topic == '/spot/right_fisheye_image/compressed':
                     self.rfe_img = cv2.imdecode( msg.data, cv2.IMREAD_ANYCOLOR )
                     self.frame_id_rfe += 1
                     rfe_f = True
-
+                    rf_lidar = msg.header.stamp.sec * 10000 + msg.header.stamp.nanosec/100000
+                # Read back fisheye image
                 elif connection.topic == '/spot/back_fisheye_image/compressed':
                     self.bfe_img = cv2.imdecode( msg.data, cv2.IMREAD_ANYCOLOR )
                     self.frame_id_bfe += 1
                     bfe_f = True
                     
                     read_img=True
+                # Publish the static tf data, required to visualise Lidar point clouds in RViz 
                 elif connection.id == 48:
-                    # print(msg)
                     for msg_transform in msg.transforms:
                         self.make_transforms(msg_transform.header.frame_id,msg_transform.child_frame_id, msg_transform.transform.translation, msg_transform.transform.rotation)
                        
-                
+                # Read lidar point clouds
                 elif connection.topic == '/rslidar_points':
-
+                    
                     dtype = np.float32
                     itemsize = np.dtype(dtype).itemsize # A 32-bit float takes 4 bytes.
-                    
+                    # These lidar point clouds need to be published, so required information is processed.
                     kwargs1 = {'name': 'x', 'offset': 0, 'datatype':PointField.FLOAT32, 'count':1}
                     kwargs2 = {'name': 'y', 'offset': 4, 'datatype':PointField.FLOAT32, 'count':1}
                     kwargs3 = {'name': 'z', 'offset': 8, 'datatype':PointField.FLOAT32, 'count':1}
@@ -364,26 +364,28 @@ class ROSTracker(Node):
                 # Add a column of ones
                     points = np.hstack([points, np.ones((points.shape[0], 1))])
                     read_lidar = True
-                # if ((self.frame_id_lfe + self.frame_id_bfe + self.frame_id_rfe) % 2 == 0 )& read_lidar & (self.frame_id_lfe != 0):
                 if lfe_f & bfe_f &  rfe_f & read_lidar:
                     read_lidar = False
                     lfe_f = False
                     bfe_f = False
                     rfe_f = False
+                    # Stitch images together.
                     cn_img = self.stitchimages(self.lfe_img, self.bfe_img, self.rfe_img, img=True)
-                    self.callback(cn_img, points)
-                    # self.cam, _ = self.ld2D.projection(self.lfe_img, points, self.ld2D.rslidar_to_body, self.ld2D.left_fisheye_to_body, self.ld2D.P_lfe)
+                    # Perform object tracking on the stitched images.
+                    self.callback(cn_img)
+                    
+                    # Lidar fusion - project lidar points on to the images.
                     self.cam, _, self.ld_lfe = ld2cam.projection(self.lfe_img, points, ld2cam.rslidar_to_body, ld2cam.left_fisheye_to_body, ld2cam.P_lfe )
                     self.cam, _, self.ld_bfe  = ld2cam.projection(self.bfe_img, points, ld2cam.rslidar_to_body, ld2cam.body_to_back_fisheye, ld2cam.P_bfe )
                     self.cam, _, self.ld_rfe = ld2cam.projection(self.rfe_img, points, ld2cam.rslidar_to_body, ld2cam.right_fisheye_to_body, ld2cam.P_rfe)
-                    # crp_nz = self.ld_bfe[np.nonzero(self.ld_bfe)]
-                    # print(crp_nz.flatten())
+                    
+                    # Stitch lidar projected on images together.
                     self.ld_img = self.stitchimages(self.ld_lfe, self.ld_bfe, self.ld_rfe)
                     
                     # cv2.imshow('img', self.ld_img)
                     # cv2.waitKey(1)
     @torch.no_grad()
-    def callback(self, rfe_img, points):
+    def callback(self, rfe_img):
         self.rfe_img = rfe_img
         # self.rfe_img = cv2.resize(self.rfe_img, (640,640), interpolation=cv2.INTER_AREA)
         im = np.stack((self.rfe_img, self.rfe_img, self.rfe_img), axis=0)
@@ -487,14 +489,13 @@ class ROSTracker(Node):
                             x2, y2 = p2
                             
                             crp = self.ld_img[y1:y2, x1:x2]
-                            crp_nz = crp[np.nonzero(crp)]
-                            m = crp[np.where((crp < 4))].max()
                             
+                            # Mid point of bounding box
                             xm, ym = int((p1[0]+p2[0])/2), int((p1[1]+p2[1])/2)
-                            
+                            # See on which image of the whole stiched images is the bounding box's mid point falling in.
                             if xm <= 451:
                                 xm = (xm/451)*640
-                                # print('1 ', xm)
+                                # distance is accurately calculated mostly when the person is the range of 1-4 m from the lidar/robot.
                                 distance = crp[np.where((crp > 1) & (crp < 4))].mean() -0.1
                                 angle_o = self.ld2D.angle_point( xm, self.ld2D.k_rfe, self.ld2D.IMG_W) 
                                 
@@ -502,32 +503,24 @@ class ROSTracker(Node):
                             if (xm >451) & (xm <= 885):
                                 
                                 xm = ((xm - 451)/434)*640
-                                # print('2 ', xm)
                                 distance = crp[np.where((crp > 1) & (crp < 4))].mean() - 0.2#+ 0.54
                                 angle_o = self.ld2D.angle_point( xm, self.ld2D.k_bfe, self.ld2D.IMG_W)
                                 angle = -angle_o + self.back_cam_angle
                             if xm > 885:
                                 xm = ((xm - 885)/457)*640
                                 distance = crp[np.where((crp > 1) & (crp < 4))].mean() -0.3
-                                # print('3 ', xm)
                                 angle_o = self.ld2D.angle_point( xm, self.ld2D.k_lfe, self.ld2D.IMG_W)
                                 angle = -angle_o + self.left_cam_angle #- np.pi/2
 
 
-                            # _, _, d=np.take(self.cam,np.where(outlier),axis=1).reshape(3, -1)
                             traj_dict[id] = {'distance':distance, 'angle':angle}
                             self.dangles.append({'distance':distance, 'angle':angle})
-                            np.save('dangles.npy', np.array(self.dangles))
-                            print(traj_dict, 'angle o ', angle_o)
-                            # traj_dict[id] = {'distance':2.964, 'angle':3.0469}
 
                             
                             if self.save_trajectories and self.tracking_method == 'strongsort':
                                 q = output[7]
                                 self.tracker_list[i].trajectory(im0, q, color=color)
-                        # data = message_converter.convert_dictionary_to_ros_message('std_msgs/msg/String', traj_dict)
                         msg = String()
-                        # print(traj_dict, 'Angle o ', angle_o)
                         msg.data = json.dumps(traj_dict)
                         self.pub.publish(msg)
             else:
